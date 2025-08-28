@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waveform Visualiser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #4a5568;
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #6366f1;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid #e2e8f0;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #6366f1;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-white tracking-tight">Waveform Visualizer</h1>
+            <p class="text-lg text-gray-400 mt-2">Explore and interact with different wave functions.</p>
+        </header>
+
+        <div class="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-2xl border border-gray-700 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="flex flex-col">
+                    <label for="wave-type" class="mb-2 font-medium text-gray-300">Wave Type</label>
+                    <select id="wave-type" class="bg-gray-700 border border-gray-600 text-white rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="sin">Sine</option>
+                        <option value="cos">Cosine</option>
+                        <option value="tan">Tangent</option>
+                        <option value="sawtooth">Sawtooth</option>
+                        <option value="square">Square</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="amplitude" class="mb-2 font-medium text-gray-300">Amplitude: <span id="amplitude-value">100</span></label>
+                    <input type="range" id="amplitude" min="10" max="200" value="100">
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="frequency" class="mb-2 font-medium text-gray-300">Frequency: <span id="frequency-value">0.01</span></label>
+                    <input type="range" id="frequency" min="0.001" max="0.05" step="0.001" value="0.01">
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="speed" class="mb-2 font-medium text-gray-300">Speed: <span id="speed-value">1</span></label>
+                    <input type="range" id="speed" min="0" max="10" value="1">
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-800/50 p-2 rounded-2xl shadow-2xl border border-gray-700">
+             <canvas id="waveCanvas" class="w-full h-auto rounded-lg"></canvas>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('waveCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const waveTypeSelect = document.getElementById('wave-type');
+            const amplitudeSlider = document.getElementById('amplitude');
+            const frequencySlider = document.getElementById('frequency');
+            const speedSlider = document.getElementById('speed');
+
+            const amplitudeValueSpan = document.getElementById('amplitude-value');
+            const frequencyValueSpan = document.getElementById('frequency-value');
+            const speedValueSpan = document.getElementById('speed-value');
+
+            let time = 0;
+            let waveConfig = {
+                type: 'sin',
+                amplitude: 100,
+                frequency: 0.01,
+                speed: 1
+            };
+
+            const waveFunctions = {
+                sin: (x) => Math.sin(x),
+                cos: (x) => Math.cos(x),
+                tan: (x) => Math.tan(x),
+                sawtooth: (x) => (x / Math.PI) % 2 - 1,
+                square: (x) => Math.sign(Math.sin(x))
+            };
+
+            function resizeCanvas() {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+            }
+
+            setTimeout(resizeCanvas, 10);
+            window.addEventListener('resize', resizeCanvas);
+
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#818cf8';
+                ctx.shadowColor = '#6366f1';
+                ctx.shadowBlur = 10;
+                
+                ctx.beginPath();
+                
+                const canvasWidth = canvas.getBoundingClientRect().width;
+                const canvasHeight = canvas.getBoundingClientRect().height;
+                const centerY = canvasHeight / 2;
+
+                ctx.moveTo(0, centerY);
+
+                const currentWaveFunction = waveFunctions[waveConfig.type];
+
+                for (let x = 0; x < canvasWidth; x++) {
+                    const angle = (x * waveConfig.frequency) + time;
+                    const y = centerY + waveConfig.amplitude * currentWaveFunction(angle);
+                    ctx.lineTo(x, y);
+                }
+
+                ctx.stroke();
+                
+                time += 0.01 * waveConfig.speed;
+
+                requestAnimationFrame(draw);
+            }
+
+            waveTypeSelect.addEventListener('change', (e) => {
+                waveConfig.type = e.target.value;
+            });
+
+            amplitudeSlider.addEventListener('input', (e) => {
+                waveConfig.amplitude = parseFloat(e.target.value);
+                amplitudeValueSpan.textContent = waveConfig.amplitude;
+            });
+
+            frequencySlider.addEventListener('input', (e) => {
+                waveConfig.frequency = parseFloat(e.target.value);
+                frequencyValueSpan.textContent = waveConfig.frequency;
+            });
+
+            speedSlider.addEventListener('input', (e) => {
+                waveConfig.speed = parseFloat(e.target.value);
+                speedValueSpan.textContent = waveConfig.speed;
+            });
+
+            draw();
+        });
+    </script>
+</body>
+</html>
